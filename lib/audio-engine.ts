@@ -99,7 +99,7 @@ const GENRE_BPM: Record<Genre, number> = {
   metal: 140,
   rap: 90,
   pop: 120,
-  jazz: 110,
+  videogame: 110,
 };
 
 // ══════════════════════════════════════════════════════════════════════
@@ -658,7 +658,7 @@ const GENERATORS: Record<Genre, Record<TrackKind, TrackGenerator>> = {
     drums: generatePopDrums,
     extras: generatePopExtras,
   },
-  jazz: {
+  videogame: {
     bass: generateJazzBass,
     lead: generateJazzLead,
     drums: generateJazzDrums,

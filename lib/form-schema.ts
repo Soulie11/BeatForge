@@ -17,7 +17,7 @@ export const welcomeSchema = z.object({
 
 // ── Step 2: Genre selection ─────────────────────────────────────────
 export const genreSchema = z.object({
-  genre: z.enum(["metal", "rap", "pop", "jazz"], {
+  genre: z.enum(["metal", "rap", "pop", "videogame"], {
     required_error: "Wybierz gatunek muzyczny",
   }),
 });

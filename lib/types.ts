@@ -1,5 +1,5 @@
 // ── Union types for genres and track kinds ──────────────────────────
-export type Genre = "metal" | "rap" | "pop" | "jazz";
+export type Genre = "metal" | "rap" | "pop" | "videogame";
 export type TrackKind = "bass" | "lead" | "drums" | "extras";
 
 // ── Intersection type: base track info merged with playback state ───
@@ -53,7 +53,8 @@ export type MixerSession = {
 // ── Type predicate ──────────────────────────────────────────────────
 export function isGenre(value: unknown): value is Genre {
   return (
-    typeof value === "string" && ["metal", "rap", "pop", "jazz"].includes(value)
+    typeof value === "string" &&
+    ["metal", "rap", "pop", "videogame"].includes(value)
   );
 }
 
@@ -73,7 +74,7 @@ export function getTrackLabel(kind: TrackKind, genre?: Genre): string {
       metal: "Heavy",
       rap: "Street",
       pop: "Bright",
-      jazz: "Smooth",
+      videogame: "Smooth",
     };
     return `${genrePrefixes[genre]} ${baseLabels[kind]}`;
   }
@@ -95,7 +96,7 @@ export const GENRE_CONFIGS: GenreMap = {
     name: "metal",
     label: "Metal",
     color: "hsl(0, 85%, 55%)",
-    bpm: 140,
+    bpm: 180,
     description: "Heavy riffs, thundering drums, and crushing bass lines",
     tracks: [
       { kind: "bass", label: "Bass", icon: "bass" },
@@ -108,7 +109,7 @@ export const GENRE_CONFIGS: GenreMap = {
     name: "rap",
     label: "Rap",
     color: "hsl(45, 95%, 55%)",
-    bpm: 90,
+    bpm: 150,
     description: "Hard-hitting beats, deep 808s, and smooth melodies",
     tracks: [
       { kind: "bass", label: "808 Bass", icon: "bass" },
@@ -121,7 +122,7 @@ export const GENRE_CONFIGS: GenreMap = {
     name: "pop",
     label: "Pop",
     color: "hsl(330, 85%, 60%)",
-    bpm: 120,
+    bpm: 114,
     description: "Catchy hooks, bright synths, and danceable rhythms",
     tracks: [
       { kind: "bass", label: "Bass Synth", icon: "bass" },
@@ -130,12 +131,12 @@ export const GENRE_CONFIGS: GenreMap = {
       { kind: "extras", label: "Pads & FX", icon: "extras" },
     ],
   },
-  jazz: {
-    name: "jazz",
-    label: "Jazz",
+  videogame: {
+    name: "videogame",
+    label: "VideoGame",
     color: "hsl(210, 80%, 55%)",
-    bpm: 110,
-    description: "Smooth bass walks, silky keys, and brush strokes",
+    bpm: 190,
+    description: "Fast hooks, Faster synths, and an synth guitar",
     tracks: [
       { kind: "bass", label: "Upright Bass", icon: "bass" },
       { kind: "lead", label: "Piano", icon: "lead" },

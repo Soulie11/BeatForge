@@ -9,21 +9,21 @@ const GENRE_ICONS: Record<Genre, React.ReactNode> = {
   metal: <Guitar className="h-8 w-8" />,
   rap: <Mic2 className="h-8 w-8" />,
   pop: <Music className="h-8 w-8" />,
-  jazz: <Piano className="h-8 w-8" />,
+  videogame: <Piano className="h-8 w-8" />,
 };
 
 const GENRE_COLOR_CLASSES: Record<Genre, string> = {
   metal: "border-metal text-metal",
   rap: "border-rap text-rap",
   pop: "border-pop text-pop",
-  jazz: "border-jazz text-jazz",
+  videogame: "border-jazz text-jazz",
 };
 
 const GENRE_BG_CLASSES: Record<Genre, string> = {
   metal: "bg-metal/10",
   rap: "bg-rap/10",
   pop: "bg-pop/10",
-  jazz: "bg-jazz/10",
+  videogame: "bg-jazz/10",
 };
 
 type GenreSelectorProps = {
@@ -32,7 +32,7 @@ type GenreSelectorProps = {
 };
 
 export function GenreSelector({ value, onChange }: GenreSelectorProps) {
-  const genres: Genre[] = ["metal", "rap", "pop", "jazz"];
+  const genres: Genre[] = ["metal", "rap", "pop", "videogame"];
 
   return (
     <div className="grid grid-cols-2 gap-4">
