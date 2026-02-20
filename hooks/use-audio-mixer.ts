@@ -20,6 +20,10 @@ export function useAudioMixer(genre: Genre) {
     isPlaying: false,
   });
 
+  // Prevent calling AudioContext.close() multiple times.
+  // Browsers may throw: "Cannot close a closed AudioContext." (InvalidStateError)
+  const isClosingRef = useRef(false);
+
   const [trackStates, setTrackStates] = useState<TrackMuteState>({
     bass: false,
     lead: false,
@@ -99,6 +103,12 @@ export function useAudioMixer(genre: Genre) {
 
   const cleanup = useCallback(() => {
     const engine = engineRef.current;
+
+    // cleanup can be called more than once (e.g. manual cleanup + component unmount).
+    // Make subsequent calls a no-op while we're already tearing down.
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+
     engine.sourceNodes.forEach((source) => {
       try {
         source.stop();
@@ -106,7 +116,17 @@ export function useAudioMixer(genre: Genre) {
         // ignore
       }
     });
-    engine.audioContext?.close();
+
+    const ctx = engine.audioContext;
+    engine.audioContext = null;
+
+    if (ctx && ctx.state !== "closed") {
+      // close() is async and can reject if already closing/closed.
+      ctx.close().catch(() => {
+        /* ignore */
+      });
+    }
+
     engine.gainNodes.clear();
     engine.sourceNodes.clear();
     engine.isPlaying = false;
@@ -117,6 +137,10 @@ export function useAudioMixer(genre: Genre) {
       drums: false,
       extras: false,
     });
+
+    // Allow future initializeAudio() calls after cleanup.
+    // (We don't block on ctx.close() resolving.)
+    isClosingRef.current = false;
   }, []);
 
   useEffect(() => {
