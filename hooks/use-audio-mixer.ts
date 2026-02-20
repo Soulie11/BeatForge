@@ -2,11 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import type { Genre, TrackKind, AudioEngineRef } from "@/lib/types";
-import {
-  createTrackBuffer,
-  getLoopDurationForGenre,
-  getActualLoopDuration,
-} from "@/lib/audio-engine";
+import { createTrackBuffer, getActualLoopDuration } from "@/lib/audio-engine";
 
 export type TrackMuteState = Record<TrackKind, boolean>;
 
@@ -20,8 +16,7 @@ export function useAudioMixer(genre: Genre) {
     isPlaying: false,
   });
 
-  // Prevent calling AudioContext.close() multiple times.
-  // Browsers may throw: "Cannot close a closed AudioContext." (InvalidStateError)
+  // Prevent calling AudioContext.close() multiple times
   const isClosingRef = useRef(false);
 
   const [trackStates, setTrackStates] = useState<TrackMuteState>({
@@ -35,21 +30,49 @@ export function useAudioMixer(genre: Genre) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const initializeAudio = useCallback(async () => {
-    if (engineRef.current.isPlaying) return;
+    const engine = engineRef.current;
+
+    // If an AudioContext already exists (e.g. created by autoplay but suspended),
+    // don't create a new one — try to resume it.
+    if (engine.audioContext) {
+      const ctx = engine.audioContext;
+
+      if (ctx.state === "suspended") {
+        try {
+          await ctx.resume();
+        } catch {
+          // Autoplay policy: resume may fail without a user gesture.
+        }
+      }
+
+      const running = ctx.state === "running";
+      engine.isPlaying = running;
+      setIsInitialized(running);
+      return;
+    }
+
+    if (engine.isPlaying) return;
+
     setIsLoading(true);
 
     try {
       const ctx = new AudioContext();
       engineRef.current.audioContext = ctx;
 
-      // Laduj wszystkie 4 sciezki rownolegle (pliki mp3 lub fallback synteza)
+      // Try to resume immediately (may succeed if autoplay is allowed)
+      try {
+        await ctx.resume();
+      } catch {
+        // ignore
+      }
+
+      // Load all 4 tracks in parallel
       const bufferPromises = ALL_TRACKS.map((track) =>
         createTrackBuffer(ctx, genre, track)
       );
       const buffers = await Promise.all(bufferPromises);
 
-      // Pobierz dlugosc petli z pierwszego tracka
-      // (jesli to plik mp3, uzyje dlugosci pliku; jesli synteza - obliczona wartosc)
+      // Determine loop duration (actual mp3 length or computed)
       const loopDuration = await getActualLoopDuration(ctx, genre, "bass");
 
       for (let i = 0; i < ALL_TRACKS.length; i++) {
@@ -57,7 +80,7 @@ export function useAudioMixer(genre: Genre) {
         const buffer = buffers[i];
 
         const gainNode = ctx.createGain();
-        gainNode.gain.value = 0; // Start muted
+        gainNode.gain.value = 0; // start muted
         gainNode.connect(ctx.destination);
 
         const sourceNode = ctx.createBufferSource();
@@ -71,8 +94,10 @@ export function useAudioMixer(genre: Genre) {
         engineRef.current.sourceNodes.set(track, sourceNode);
       }
 
-      engineRef.current.isPlaying = true;
-      setIsInitialized(true);
+      // IMPORTANT: consider initialized only if AudioContext is actually running
+      const running = ctx.state === "running";
+      engineRef.current.isPlaying = running;
+      setIsInitialized(running);
     } catch (error) {
       console.error("Failed to initialize audio:", error);
     } finally {
@@ -82,14 +107,16 @@ export function useAudioMixer(genre: Genre) {
 
   const toggleTrack = useCallback((track: TrackKind) => {
     const engine = engineRef.current;
-    if (!engine.audioContext) return;
+    const ctx = engine.audioContext;
+    if (!ctx) return;
 
     const gainNode = engine.gainNodes.get(track);
     if (!gainNode) return;
 
     setTrackStates((prev) => {
       const newState = !prev[track];
-      const currentTime = engine.audioContext!.currentTime;
+
+      const currentTime = ctx.currentTime;
       gainNode.gain.cancelScheduledValues(currentTime);
       gainNode.gain.setValueAtTime(gainNode.gain.value, currentTime);
       gainNode.gain.linearRampToValueAtTime(
@@ -104,11 +131,11 @@ export function useAudioMixer(genre: Genre) {
   const cleanup = useCallback(() => {
     const engine = engineRef.current;
 
-    // cleanup can be called more than once (e.g. manual cleanup + component unmount).
-    // Make subsequent calls a no-op while we're already tearing down.
+    // cleanup can be called more than once (manual cleanup + unmount)
     if (isClosingRef.current) return;
     isClosingRef.current = true;
 
+    // Stop sources
     engine.sourceNodes.forEach((source) => {
       try {
         source.stop();
@@ -117,11 +144,11 @@ export function useAudioMixer(genre: Genre) {
       }
     });
 
+    // Close context safely
     const ctx = engine.audioContext;
     engine.audioContext = null;
 
     if (ctx && ctx.state !== "closed") {
-      // close() is async and can reject if already closing/closed.
       ctx.close().catch(() => {
         /* ignore */
       });
@@ -130,6 +157,7 @@ export function useAudioMixer(genre: Genre) {
     engine.gainNodes.clear();
     engine.sourceNodes.clear();
     engine.isPlaying = false;
+
     setIsInitialized(false);
     setTrackStates({
       bass: false,
@@ -138,8 +166,7 @@ export function useAudioMixer(genre: Genre) {
       extras: false,
     });
 
-    // Allow future initializeAudio() calls after cleanup.
-    // (We don't block on ctx.close() resolving.)
+    // Allow future init calls
     isClosingRef.current = false;
   }, []);
 
